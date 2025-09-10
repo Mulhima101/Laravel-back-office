@@ -1,71 +1,28 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
-use Illuminate\Foundation\Application;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BlogPostController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
-use App\Services\WordPressService; // Add this import
 
+// Default route - redirect to backoffice
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+    return redirect('/backoffice');
 });
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+// WordPress Authentication API routes
+Route::post('/api/auth/login', [AuthController::class, 'login']);
+Route::post('/api/auth/logout', [AuthController::class, 'logout']);
+Route::get('/api/auth/check', [AuthController::class, 'check']);
+Route::get('/api/auth/test', [AuthController::class, 'testConnection']);
 
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-});
+// Blog post API routes
+Route::get('/api/posts', [BlogPostController::class, 'index']);
+Route::post('/api/posts', [BlogPostController::class, 'store']);
+Route::get('/api/posts/{id}', [BlogPostController::class, 'show']);
+Route::put('/api/posts/{id}', [BlogPostController::class, 'update']);
+Route::delete('/api/posts/{id}', [BlogPostController::class, 'destroy']);
 
-// ADD THIS TEST ROUTE - WordPress Connection Test (TEMPORARY)
-Route::get('/test-wp', function () {
-    try {
-        $wpService = new WordPressService();
-        
-        // Test connection first
-        $connected = $wpService->testConnection();
-        
-        if (!$connected) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Cannot connect to WordPress',
-                'wordpress_url' => env('WORDPRESS_URL')
-            ]);
-        }
-        
-        // Try to get posts
-        $posts = $wpService->getPosts();
-        
-        return response()->json([
-            'status' => 'success',
-            'connection' => 'OK',
-            'wordpress_url' => env('WORDPRESS_URL'),
-            'posts_count' => count($posts),
-            'first_post_title' => isset($posts[0]) ? $posts[0]['title']['rendered'] : 'No posts found',
-            'message' => 'WordPress connection successful!'
-        ]);
-        
-    } catch (\Exception $e) {
-        return response()->json([
-            'status' => 'error',
-            'message' => $e->getMessage(),
-            'wordpress_url' => env('WORDPRESS_URL'),
-            'suggestion' => 'Check your WordPress credentials and URL'
-        ], 500);
-    }
-});
-
-// ADD THIS ROUTE FOR YOUR MAIN APPLICATION (Vue Frontend)
+// Main Vue.js application route (catch-all)
 Route::get('/backoffice/{any?}', function () {
-    return view('backoffice'); // This will be your Vue app
+    return view('backoffice');
 })->where('any', '.*');
-
-require __DIR__.'/auth.php';

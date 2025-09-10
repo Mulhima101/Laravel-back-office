@@ -1,4 +1,5 @@
-protected $middlewareAliases = [
-    // ... other middleware
-    'wp.auth' => \App\Http\Middleware\WordPressAuthMiddleware::class,
-];
+public function __construct(WordPressService $wpService)
+{
+    $this->wpService = $wpService;
+    $this->middleware('wordpress.auth');
+}
